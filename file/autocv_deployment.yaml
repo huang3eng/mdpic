@@ -1,0 +1,63 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: autocv-deployment
+  name: autocv-deployment
+  namespace: prophet-resource-autocv
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: autocv-deployment
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: autocv-deployment
+    spec:
+      volumes:
+      - emptyDir:
+          medium: Memory
+          sizeLimit: 1G
+        name: cache-volume
+      containers:
+      - command:
+        - tail
+        - -f
+        - /etc/hosts
+        image: docker.4pd.io/autocv/autocv_running_env_cuda11:0.9
+        imagePullPolicy: IfNotPresent
+        name: autocv-container
+        resources:
+          limits:
+            cpu: "10"
+            memory: 30Gi
+            nvidia.com/gpu: "2"
+          requests:
+            cpu: "10"
+            memory: 30Gi
+            nvidia.com/gpu: "2"
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        workingDir: /root
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: cache-volume
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: docker-secret
+      nodeSelector:
+        prophet.4paradigm.com/offline: "true"
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 10
+
